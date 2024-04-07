@@ -27,11 +27,13 @@ type CoinMarketResponseBody struct {
 	Status StatusData `json:"status"`
 }
 
+type CoinMarketDataArray []CoinMarketResponseBody
+
 func getCoinMarketEndpoint(cryptoCurrencyData CryptoCurrencyData) string {
 	return fmt.Sprintf("%s?slug=%s&start=1&limit=200&category=spot&centerType=all&sort=cmc_rank_advanced&direction=desc&spotUntracked=true", baseCoinMarketEndpoint, cryptoCurrencyData.Slug)
 }
 
-func getCoinMarketData(wg *sync.WaitGroup, cryptocurrencyData CryptoCurrencyData, coinMarketDataArray []CoinMarketResponseBody, iter int, filterExchanges []string) {
+func getCoinMarketData(wg *sync.WaitGroup, cryptocurrencyData CryptoCurrencyData, coinMarketDataArray []CoinMarketResponseBody, iter int) {
 	defer wg.Done()
 	req, err := http.NewRequest("GET", getCoinMarketEndpoint(cryptocurrencyData), nil)
 	req.Header = commonHeader
@@ -50,18 +52,46 @@ func getCoinMarketData(wg *sync.WaitGroup, cryptocurrencyData CryptoCurrencyData
 		return
 	}
 
-	if len(filterExchanges) > 0 {
-		for i := 0; i < len(coinMarketData.Data.MarketPairs); i++ {
-			for j := 0; j < len(filterExchanges); j++ {
-				if coinMarketData.Data.MarketPairs[i].ExchangeSlug == filterExchanges[j] {
-					coinMarketDataArray[iter] = coinMarketData
-					return 
+	// if len(filterExchanges) > 0 {
+		// for i := 0; i < len(coinMarketData.Data.MarketPairs); i++ {
+		// 	for j := 0; j < len(filterExchanges); j++ {
+		// 		if coinMarketData.Data.MarketPairs[i].ExchangeSlug == filterExchanges[j] {
+		// 			coinMarketDataArray[iter] = coinMarketData
+		// 			return 
+		// 		}
+		// 	}
+		// }
+		// Return nil if there are filterExchanges
+	// 	return
+	// }
+
+	coinMarketDataArray[iter] = coinMarketData
+}
+
+func getCoinMarketDataArray(cryptoCurrencyList []CryptoCurrencyData) CoinMarketDataArray  {
+	var wg sync.WaitGroup
+	coinMarketDataArray := make(CoinMarketDataArray, len(cryptoCurrencyList))
+	wg.Add(len(cryptoCurrencyList))
+	for i, cryptoCurrencyData := range cryptoCurrencyList {
+		go getCoinMarketData(&wg, cryptoCurrencyData, coinMarketDataArray, i)
+	}
+	
+	wg.Wait()
+	return coinMarketDataArray
+}
+
+func (coinMarketDataArray CoinMarketDataArray) FilterByExchanges (cryptoCurrencyList []CryptoCurrencyData, exchanges []string) []CryptoCurrencyData {
+	filtered := make([]CryptoCurrencyData, 0)
+	for i, cryptoCurrencyData := range cryptoCurrencyList {
+		for j := 0; j < len(coinMarketDataArray[i].Data.MarketPairs); j++ {
+			for k := 0; k < len(exchanges); k++ {
+				if coinMarketDataArray[i].Data.MarketPairs[j].ExchangeSlug == exchanges[k] {
+					filtered = append(filtered, cryptoCurrencyData)
+					goto FilterByExchangesContinueCryptoCurrency
 				}
 			}
 		}
-		// Return nil if there are filterExchanges
-		return
+		FilterByExchangesContinueCryptoCurrency:
 	}
-
-	coinMarketDataArray[iter] = coinMarketData
+	return filtered
 }

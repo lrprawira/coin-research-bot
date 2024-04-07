@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"sync"
 	"time"
 )
 
@@ -43,56 +42,40 @@ func main() {
 	if err != nil {
 		log.Fatalln(err)
 	}
-	cryptocurrencyList := data.Data.CryptoCurrencyList
-	totalFilteredOutCandidates := 0
-	coinMarketData := make([]CoinMarketResponseBody, len(cryptocurrencyList))
-	coinChartOverviewData := make([]CoinChartOverviewDataPayload, len(cryptocurrencyList))
-
-	var wg sync.WaitGroup
+	cryptoCurrencyList := data.Data.CryptoCurrencyList
+	totalCryptoCurrency := len(cryptoCurrencyList)
+	// coinMarketData := make([]CoinMarketResponseBody, len(cryptoCurrencyList))
 
 	/* get coin chart */
+	beforeTime := time.Date(2022, 0, 0, 0, 0, 0, 0, time.UTC)
 	if createdAtChart == createdAtMode {
-		wg.Add(len(cryptocurrencyList))
-		for i, cryptocurrencyData := range cryptocurrencyList {
-			go getCoinChartOverviewData(&wg, cryptocurrencyData, coinChartOverviewData, i)
-		}
-		wg.Wait()
-	}
-
-	wg.Add(len(cryptocurrencyList))
-
-	/* get coin market data */
-	for i, cryptocurrencyData := range cryptocurrencyList {
-		// unixTime, err := strconv.ParseInt(coinChartOverviewData[i].key, 10, 64)
-		var createdAt time.Time
-		if createdAtChart == createdAtMode {
-			createdAt = time.Unix(coinChartOverviewData[i].key, 0)
-		} else {
-			createdAt, err = time.Parse(time.RFC3339, cryptocurrencyData.DateAdded)
+		coinChartOverviewDataPayload := getCoinChartOverviewDataPayloadArray(cryptoCurrencyList)
+		cryptoCurrencyList = coinChartOverviewDataPayload.FilterByFirstChartDate(cryptoCurrencyList, beforeTime)
+	} else {
+		filtered := make([]CryptoCurrencyData, 0)
+		for _, cryptoCurrencyData := range cryptoCurrencyList {
+			createdAt, err := time.Parse(time.RFC3339, cryptoCurrencyData.DateAdded)
 			if err != nil {
-				wg.Done()
+				log.Fatalln(err.Error())
+			}
+			if createdAt.Before(beforeTime) {
 				continue
 			}
+			filtered = append(filtered, cryptoCurrencyData)
 		}
-
-		// if createdAt.Before(time.Now().AddDate(-2, 0, 0)) {
-		if createdAt.Before(time.Date(2022, 0, 0, 0, 0, 0, 0, time.UTC)) {
-			wg.Done()
-			totalFilteredOutCandidates++
-			continue
-		}
-		go getCoinMarketData(&wg, cryptocurrencyData, coinMarketData, i, []string{"binance"})
+		cryptoCurrencyList = filtered
 	}
+	totalFilteredByDate := totalCryptoCurrency - len(cryptoCurrencyList)
+	totalCryptoCurrencyAfterFilteredByDate := len(cryptoCurrencyList)
 
-	fmt.Printf("Found %d coins; %d filtered by date\n", len(cryptocurrencyList), totalFilteredOutCandidates)
-	fmt.Println("Waiting for every coin to be fetched")
-	wg.Wait()
+	coinMarketDataArray := getCoinMarketDataArray(cryptoCurrencyList)
+	cryptoCurrencyList = coinMarketDataArray.FilterByExchanges(cryptoCurrencyList, []string{"binance"})
 
-	for i, cryptocurrencyData := range cryptocurrencyList {
-		if coinMarketData[i].Data.Id == 0 {
-			continue
-		}
+	totalFilteredByExchanges := totalCryptoCurrencyAfterFilteredByDate - len(cryptoCurrencyList)
 
+	fmt.Printf("Found %d coins; %d filtered by date; %d filtered by exchanges. %d coins left\n", totalCryptoCurrency, totalFilteredByDate, totalFilteredByExchanges, len(cryptoCurrencyList))
+
+	for _, cryptocurrencyData := range cryptoCurrencyList {
 		createdAt, err := time.Parse(time.RFC3339, cryptocurrencyData.DateAdded)
 		if err != nil {
 			log.Fatalln(err)
