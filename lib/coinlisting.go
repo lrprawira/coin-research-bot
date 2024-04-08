@@ -1,13 +1,10 @@
 package lib
 
 import (
-	"bytes"
 	"coin_research_bot/lib/common"
-	"encoding/gob"
 	"encoding/json"
 	"log"
 	"net/http"
-	"time"
 )
 
 const listingEndpoint = "https://api.coinmarketcap.com/data-api/v3/cryptocurrency/listing?start=1&limit=1000&sortBy=date_added&sortType=asc&convert=USDT&cryptoType=all&tagType=all&audited=false&aux=ath,atl,high24h,low24h,num_market_pairs,cmc_rank,date_added,max_supply,circulating_supply,total_supply,volume_7d,volume_30d,self_reported_circulating_supply,self_reported_market_cap&category=spot&marketCapRange=100000000~150000000"
@@ -60,32 +57,16 @@ func getCoinList() (ListingResponseBody, error) {
 }
 
 func GetCoinList() ListingResponseBody {
-	cacheEntry := common.CacheEntry{}
-	cryptoCurrencyListingResponseBody := ListingResponseBody{}
-	db := common.GetDB()
-	row := db.QueryRow("SELECT id, value, timestamp FROM caches WHERE key=?;", "listing")
-	if err := row.Scan(&cacheEntry.Id, &cacheEntry.Value, &cacheEntry.Timestamp); err == nil && cacheEntry.Timestamp.After(time.Now().Add(time.Duration(-15)*time.Minute)) {
-		// Found row
-		bufPtr := bytes.NewBuffer(cacheEntry.Value)
-		gob.NewDecoder(bufPtr).Decode(&cryptoCurrencyListingResponseBody)
-		return cryptoCurrencyListingResponseBody
-	}
-	cryptoCurrencyListingResponseBody, err := getCoinList()
-	if err != nil {
-		log.Fatalln(err)
-	}
-	var buf bytes.Buffer
-	gob.NewEncoder(&buf).Encode(cryptoCurrencyListingResponseBody)
-	if cacheEntry.Id != 0 {
-		_, err = db.Exec("UPDATE caches SET value = ?, timestamp = ? WHERE id = ?", buf.Bytes(), time.Now(), cacheEntry.Id)
+	tmp := ListingResponseBody{}
+	cryptoCurrencyListingResponseBody, err := common.GetCacheOrRunCallable[ListingResponseBody](&tmp, "listing", func() ListingResponseBody {
+		res, err := getCoinList()
 		if err != nil {
 			log.Fatalln(err)
 		}
-		return cryptoCurrencyListingResponseBody
-	}
-	_, err = db.Exec("INSERT INTO caches (key, value) VALUES (?, ?)", "listing", buf.Bytes())
+		return res
+	})
 	if err != nil {
 		log.Fatalln(err)
 	}
-	return cryptoCurrencyListingResponseBody
+	return *cryptoCurrencyListingResponseBody
 }
