@@ -82,7 +82,7 @@ func GetCoinMarketDataArray(cryptoCurrencyList *[]CryptoCurrencyData) CoinMarket
 }
 
 func (coinMarketDataArray CoinMarketDataArray) FilterByExchanges (cryptoCurrencyList *[]CryptoCurrencyData, exchanges []string) []CryptoCurrencyData {
-	filtered := make([]CryptoCurrencyData, 0)
+	filtered := make([]CryptoCurrencyData, 0, len(*cryptoCurrencyList))
 	for i, cryptoCurrencyData := range *cryptoCurrencyList {
 		for _, marketPair := range coinMarketDataArray[i].Data.MarketPairs {
 			for _, exchange := range exchanges {
