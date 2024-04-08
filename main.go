@@ -1,92 +1,61 @@
 package main
 
 import (
-	"encoding/json"
+	"coin_research_bot/lib"
+	"coin_research_bot/filtermodules"
 	"fmt"
 	"log"
-	"net/http"
 	"time"
 )
 
-const host = "api.coinmarketcap.com"
-const origin = "https://coinmarketcap.com"
-const referer = "https://coinmarketcap.com/"
-const userAgent = "Mozilla/5.0 (X11; Linux x86_64; rv:124.0) Gecko/20100101 Firefox/124.0"
 
-var commonHeader = http.Header{
-	"Accept":     {"application/json"},
-	"Host":       {host},
-	"Origin":     {origin},
-	"Referer":    {referer},
-	"User-Agent": {userAgent},
-}
+/* Config */
+const createdAtMode = filtermodules.CreatedAtDateAdded
+const beforeTimeString = "2022-01-01T00:00:00Z"
+var beforeTime, _ = time.Parse(time.RFC3339, beforeTimeString)
+/* End config */
 
-type StatusData struct {
-	Timestamp    string `json:"timestamp"`
-	ErrorMessage string `json:"error_message"`
-}
-
-const createdAtDateAdded = "dateAdded"
-const createdAtChart = "firstTraded"
-const createdAtMode = createdAtDateAdded
 
 func main() {
-	req, err := http.NewRequest("GET", listingEndpoint, nil)
-	req.Header = commonHeader
-	res, err := http.DefaultClient.Do(req)
+	cryptoCurrencyListingResponseBody, err := lib.GetCoinList()
+
 	if err != nil {
 		log.Fatalln(err)
 	}
-	var data ListingResponseBody
-	err = json.NewDecoder(res.Body).Decode(&data)
-	if err != nil {
-		log.Fatalln(err)
-	}
-	cryptoCurrencyList := data.Data.CryptoCurrencyList
-	totalCryptoCurrency := len(cryptoCurrencyList)
-	// coinMarketData := make([]CoinMarketResponseBody, len(cryptoCurrencyList))
 
-	/* get coin chart */
-	beforeTime := time.Date(2022, 0, 0, 0, 0, 0, 0, time.UTC)
-	if createdAtChart == createdAtMode {
-		coinChartOverviewDataPayload := getCoinChartOverviewDataPayloadArray(cryptoCurrencyList)
-		cryptoCurrencyList = coinChartOverviewDataPayload.FilterByFirstChartDate(cryptoCurrencyList, beforeTime)
-	} else {
-		filtered := make([]CryptoCurrencyData, 0)
-		for _, cryptoCurrencyData := range cryptoCurrencyList {
-			createdAt, err := time.Parse(time.RFC3339, cryptoCurrencyData.DateAdded)
-			if err != nil {
-				log.Fatalln(err.Error())
-			}
-			if createdAt.Before(beforeTime) {
-				continue
-			}
-			filtered = append(filtered, cryptoCurrencyData)
-		}
-		cryptoCurrencyList = filtered
-	}
-	totalFilteredByDate := totalCryptoCurrency - len(cryptoCurrencyList)
-	totalCryptoCurrencyAfterFilteredByDate := len(cryptoCurrencyList)
+	cryptoCurrencyList := cryptoCurrencyListingResponseBody.Data.CryptoCurrencyList
 
-	coinMarketDataArray := getCoinMarketDataArray(cryptoCurrencyList)
-	cryptoCurrencyList = coinMarketDataArray.FilterByExchanges(cryptoCurrencyList, []string{"binance"})
+	statistics := struct {
+		Total               uint
+		FilteredByDate      uint
+		FilteredByExchanges uint
+	}{}
 
-	totalFilteredByExchanges := totalCryptoCurrencyAfterFilteredByDate - len(cryptoCurrencyList)
+	statistics.Total = uint(len(cryptoCurrencyList))
 
-	fmt.Printf("Found %d coins; %d filtered by date; %d filtered by exchanges. %d coins left\n", totalCryptoCurrency, totalFilteredByDate, totalFilteredByExchanges, len(cryptoCurrencyList))
+	/* Filters */
+	cryptoCurrencyList = filtermodules.FilterByStartDate(&cryptoCurrencyList, nil, createdAtMode, beforeTime)
+	statistics.FilteredByDate = statistics.Total - uint(len(cryptoCurrencyList))
 
+	cryptoCurrencyList = filtermodules.FilterByExchanges(&cryptoCurrencyList, nil, []string{"binance"})
+	statistics.FilteredByExchanges = statistics.Total - statistics.FilteredByDate - uint(len(cryptoCurrencyList))
+	/* End Filters */
+
+	fmt.Printf("Found %d coins; %d filtered by date; %d filtered by exchanges. %d coins left.\n\n", statistics.Total, statistics.FilteredByDate, statistics.FilteredByExchanges, len(cryptoCurrencyList))
+
+	/* Print Coin List */
 	for _, cryptocurrencyData := range cryptoCurrencyList {
 		createdAt, err := time.Parse(time.RFC3339, cryptocurrencyData.DateAdded)
 		if err != nil {
 			log.Fatalln(err)
 		}
 		fmt.Println(cryptocurrencyData.Name, fmt.Sprintf("(%s)", cryptocurrencyData.Symbol), createdAt.Format("January 2006"))
-		for j := 0; j < len(cryptocurrencyData.Quotes); j++ {
-			quote := cryptocurrencyData.Quotes[j]
+		for _, quote := range cryptocurrencyData.Quotes {
 			if quote.Name != "USDT" {
 				continue
 			}
 			fmt.Printf("FDMarketCap: %f, 1Y: %.3f %%\n", quote.FullyDilutedMarketCap, quote.PercentChangeOneYear)
 		}
 	}
+	/* End Print Coin List */
 }

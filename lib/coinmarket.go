@@ -1,6 +1,7 @@
-package main
+package lib
 
 import (
+	"coin_research_bot/lib/common"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -24,7 +25,7 @@ type CoinMarketResponseBody struct {
 			Category     string `json:"category"`
 		} `json:"marketPairs"`
 	} `json:"data"`
-	Status StatusData `json:"status"`
+	Status common.StatusData `json:"status"`
 }
 
 type CoinMarketDataArray []CoinMarketResponseBody
@@ -36,7 +37,7 @@ func getCoinMarketEndpoint(cryptoCurrencyData CryptoCurrencyData) string {
 func getCoinMarketData(wg *sync.WaitGroup, cryptocurrencyData CryptoCurrencyData, coinMarketDataArray []CoinMarketResponseBody, iter int) {
 	defer wg.Done()
 	req, err := http.NewRequest("GET", getCoinMarketEndpoint(cryptocurrencyData), nil)
-	req.Header = commonHeader
+	req.Header = common.CommonHeader
 	res, err := http.DefaultClient.Do(req)
 
 	if err != nil {
@@ -68,11 +69,11 @@ func getCoinMarketData(wg *sync.WaitGroup, cryptocurrencyData CryptoCurrencyData
 	coinMarketDataArray[iter] = coinMarketData
 }
 
-func getCoinMarketDataArray(cryptoCurrencyList []CryptoCurrencyData) CoinMarketDataArray  {
+func GetCoinMarketDataArray(cryptoCurrencyList *[]CryptoCurrencyData) CoinMarketDataArray  {
 	var wg sync.WaitGroup
-	coinMarketDataArray := make(CoinMarketDataArray, len(cryptoCurrencyList))
-	wg.Add(len(cryptoCurrencyList))
-	for i, cryptoCurrencyData := range cryptoCurrencyList {
+	coinMarketDataArray := make(CoinMarketDataArray, len(*cryptoCurrencyList))
+	wg.Add(len(*cryptoCurrencyList))
+	for i, cryptoCurrencyData := range *cryptoCurrencyList {
 		go getCoinMarketData(&wg, cryptoCurrencyData, coinMarketDataArray, i)
 	}
 	
@@ -80,12 +81,12 @@ func getCoinMarketDataArray(cryptoCurrencyList []CryptoCurrencyData) CoinMarketD
 	return coinMarketDataArray
 }
 
-func (coinMarketDataArray CoinMarketDataArray) FilterByExchanges (cryptoCurrencyList []CryptoCurrencyData, exchanges []string) []CryptoCurrencyData {
+func (coinMarketDataArray CoinMarketDataArray) FilterByExchanges (cryptoCurrencyList *[]CryptoCurrencyData, exchanges []string) []CryptoCurrencyData {
 	filtered := make([]CryptoCurrencyData, 0)
-	for i, cryptoCurrencyData := range cryptoCurrencyList {
-		for j := 0; j < len(coinMarketDataArray[i].Data.MarketPairs); j++ {
-			for k := 0; k < len(exchanges); k++ {
-				if coinMarketDataArray[i].Data.MarketPairs[j].ExchangeSlug == exchanges[k] {
+	for i, cryptoCurrencyData := range *cryptoCurrencyList {
+		for _, marketPair := range coinMarketDataArray[i].Data.MarketPairs {
+			for _, exchange := range exchanges {
+				if marketPair.ExchangeSlug == exchange {
 					filtered = append(filtered, cryptoCurrencyData)
 					goto FilterByExchangesContinueCryptoCurrency
 				}

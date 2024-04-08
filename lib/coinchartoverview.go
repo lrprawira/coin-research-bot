@@ -1,6 +1,7 @@
-package main
+package lib
 
 import (
+	"coin_research_bot/lib/common"
 	"encoding/json"
 	"fmt"
 	"math"
@@ -17,7 +18,7 @@ type CoinChartOverviewResponseBody struct {
 	Data struct {
 		Points map[string]interface{}
 	} `json:"data"`
-	Status StatusData `json:"status"`
+	Status common.StatusData `json:"status"`
 }
 
 func getCoinChartOverviewEndpoint(cryptoCurrencyData CryptoCurrencyData) string {
@@ -34,7 +35,7 @@ type CoinChartOverviewDataPayload []CoinChartOverviewDataPayloadItem
 func getCoinChartOverviewData(wg *sync.WaitGroup, cryptoCurrencyData CryptoCurrencyData, coinChartOverviewDataArray CoinChartOverviewDataPayload, iter int) {
 	defer wg.Done()
 	req, err := http.NewRequest("GET", getCoinChartOverviewEndpoint(cryptoCurrencyData), nil)
-	req.Header = commonHeader
+	req.Header = common.CommonHeader
 	res, err := http.DefaultClient.Do(req)
 
 	if err != nil {
@@ -69,21 +70,21 @@ func getCoinChartOverviewData(wg *sync.WaitGroup, cryptoCurrencyData CryptoCurre
 	return
 }
 
-func getCoinChartOverviewDataPayloadArray(cryptoCurrencyList []CryptoCurrencyData) CoinChartOverviewDataPayload {
+func GetCoinChartOverviewDataPayloadArray(cryptoCurrencyList *[]CryptoCurrencyData) CoinChartOverviewDataPayload {
 	var wg sync.WaitGroup
-	coinChartOverviewData := make(CoinChartOverviewDataPayload, len(cryptoCurrencyList))
-	wg.Add(len(cryptoCurrencyList))
+	coinChartOverviewData := make(CoinChartOverviewDataPayload, len(*cryptoCurrencyList))
+	wg.Add(len(*cryptoCurrencyList))
 
-	for i, cryptocurrencyData := range cryptoCurrencyList {
+	for i, cryptocurrencyData := range *cryptoCurrencyList {
 		go getCoinChartOverviewData(&wg, cryptocurrencyData, coinChartOverviewData, i)
 	}
 	wg.Wait()
 	return coinChartOverviewData
 }
 
-func (coinChartOverviewDataPayloadArray CoinChartOverviewDataPayload) FilterByFirstChartDate(cryptoCurrencyList []CryptoCurrencyData, beforeTime time.Time) []CryptoCurrencyData  {
+func (coinChartOverviewDataPayloadArray CoinChartOverviewDataPayload) FilterByFirstChartDate(cryptoCurrencyList *[]CryptoCurrencyData, beforeTime time.Time) []CryptoCurrencyData  {
 	filtered := make([]CryptoCurrencyData, 0)
-	for i, cryptoCurrencyData := range cryptoCurrencyList {
+	for i, cryptoCurrencyData := range *cryptoCurrencyList {
 		startDate := time.Unix(coinChartOverviewDataPayloadArray[i].key, 0)
 		if startDate.Before(beforeTime) {
 			continue
