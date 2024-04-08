@@ -57,8 +57,8 @@ func getCoinList() (ListingResponseBody, error) {
 }
 
 func GetCoinList() ListingResponseBody {
-	tmp := ListingResponseBody{}
-	cryptoCurrencyListingResponseBody, err := common.GetCacheOrRunCallable[ListingResponseBody](&tmp, "listing", func() ListingResponseBody {
+	cryptoCurrencyListingResponseBody := new(ListingResponseBody)
+	cryptoCurrencyListingResponseBody, err := common.GetCacheOrRunCallable[ListingResponseBody](cryptoCurrencyListingResponseBody, "listing", func() ListingResponseBody {
 		res, err := getCoinList()
 		if err != nil {
 			log.Fatalln(err)
