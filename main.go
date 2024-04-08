@@ -23,19 +23,9 @@ func main() {
 	db := common.GetDB()
 	defer db.Close()
 
-	if _, err := db.Exec(`
-		CREATE TABLE IF NOT EXISTS caches (
-			id INTEGER NOT NULL PRIMARY KEY,
-			key TEXT NOT NULL UNIQUE,
-			value BLOB,
-			timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
-		);
-		`); err != nil {
-		log.Fatalln(err)
-	}
+	common.HandleCacheTableCreation()
 
 	cryptoCurrencyListingResponseBody := lib.GetCoinList()
-
 	cryptoCurrencyList := cryptoCurrencyListingResponseBody.Data.CryptoCurrencyList
 
 	statistics := struct {
