@@ -53,19 +53,6 @@ func getCoinMarketData(wg *sync.WaitGroup, cryptocurrencyData CryptoCurrencyData
 		return
 	}
 
-	// if len(filterExchanges) > 0 {
-		// for i := 0; i < len(coinMarketData.Data.MarketPairs); i++ {
-		// 	for j := 0; j < len(filterExchanges); j++ {
-		// 		if coinMarketData.Data.MarketPairs[i].ExchangeSlug == filterExchanges[j] {
-		// 			coinMarketDataArray[iter] = coinMarketData
-		// 			return 
-		// 		}
-		// 	}
-		// }
-		// Return nil if there are filterExchanges
-	// 	return
-	// }
-
 	coinMarketDataArray[iter] = coinMarketData
 }
 
