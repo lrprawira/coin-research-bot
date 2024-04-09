@@ -54,7 +54,6 @@ func getCoinMarketData(cryptoCurrencyData *CryptoCurrencyData) (*CoinMarketRespo
 	if coinMarketData.Status.ErrorCode != "0" {
 		return nil, errors.New(coinMarketData.Status.ErrorMessage)
 	}
-	log.Println(coinMarketData.Data)
 
 	return &coinMarketData, nil
 }
