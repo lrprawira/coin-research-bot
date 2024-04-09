@@ -1,7 +1,7 @@
 package main
 
 import (
-	"coin_research_bot/filtermodules"
+	"coin_research_bot/lib/filtermodules"
 	"coin_research_bot/lib"
 	"coin_research_bot/lib/common"
 	"fmt"
