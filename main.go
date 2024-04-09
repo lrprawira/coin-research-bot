@@ -38,7 +38,7 @@ func main() {
 
 	statistics.Total = uint(len(cryptoCurrencyList))
 
-	/* query for filters */
+	/* Filters */
 	var coinChartOverviewDataPayloadArray *lib.CoinChartOverviewDataPayload = nil
 	if filtermodules.CreatedAtChart == createdAtMode {
 		coinChartOverviewDataPayloadArray = new(lib.CoinChartOverviewDataPayload)
@@ -50,6 +50,10 @@ func main() {
 			log.Fatalln(err)
 		}
 	}
+
+	cryptoCurrencyList = filtermodules.FilterByStartDate(&cryptoCurrencyList, coinChartOverviewDataPayloadArray, createdAtMode, beforeTime)
+	statistics.FilteredByDate = statistics.Total - uint(len(cryptoCurrencyList))
+
 	coinMarketDataArray := new(lib.CoinMarketDataArray)
 	coinMarketDataArray, err := common.GetCacheOrRunCallable[lib.CoinMarketDataArray](coinMarketDataArray, "coinmarketdataarray", 86400, func() lib.CoinMarketDataArray {
 		return lib.GetCoinMarketDataArray(&cryptoCurrencyList)
@@ -57,11 +61,6 @@ func main() {
 	if err != nil {
 		log.Fatalln(err)
 	}
-	/* End query for filters */
-
-	/* Filters */
-	cryptoCurrencyList = filtermodules.FilterByStartDate(&cryptoCurrencyList, coinChartOverviewDataPayloadArray, createdAtMode, beforeTime)
-	statistics.FilteredByDate = statistics.Total - uint(len(cryptoCurrencyList))
 
 	cryptoCurrencyList = filtermodules.FilterByExchanges(&cryptoCurrencyList, coinMarketDataArray, []string{"binance"})
 	statistics.FilteredByExchanges = statistics.Total - statistics.FilteredByDate - uint(len(cryptoCurrencyList))
