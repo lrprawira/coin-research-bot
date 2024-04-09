@@ -31,7 +31,7 @@ type CoinMarketResponseBody struct {
 type CoinMarketDataArray []*CoinMarketResponseBody
 
 func getCoinMarketEndpoint(cryptoCurrencyData CryptoCurrencyData) string {
-	return fmt.Sprintf("%s?slug=%s&start=0&limit=100&category=spot&centerType=all&sort=cmc_rank_advanced&direction=desc&spotUntracked=true", baseCoinMarketEndpoint, cryptoCurrencyData.Slug)
+	return fmt.Sprintf("%s?slug=%s&start=1&limit=100&category=spot&centerType=all&sort=cmc_rank_advanced&direction=desc&spotUntracked=true", baseCoinMarketEndpoint, cryptoCurrencyData.Slug)
 }
 
 func getCoinMarketData(cryptoCurrencyData *CryptoCurrencyData) (*CoinMarketResponseBody, error) {
