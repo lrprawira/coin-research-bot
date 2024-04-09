@@ -13,7 +13,7 @@ const (
 	CreatedAtChart
 )
 
-func FilterByStartDate(cryptoCurrencyList *[]lib.CryptoCurrencyData, coinChartOverviewDataPayload *lib.CoinChartOverviewDataPayload, createdAtMode StartDateType, beforeTime time.Time) []lib.CryptoCurrencyData {
+func FilterByStartDate(cryptoCurrencyList *lib.CryptoCurrencyList, coinChartOverviewDataPayload *lib.CoinChartOverviewDataPayload, createdAtMode StartDateType, beforeTime time.Time) lib.CryptoCurrencyList {
 	if CreatedAtChart == createdAtMode {
 		if coinChartOverviewDataPayload == nil {
 			tmp := lib.GetCoinChartOverviewDataPayloadArray(cryptoCurrencyList)
@@ -22,7 +22,7 @@ func FilterByStartDate(cryptoCurrencyList *[]lib.CryptoCurrencyData, coinChartOv
 		tmp := coinChartOverviewDataPayload.FilterByFirstChartDate(cryptoCurrencyList, beforeTime)
 		cryptoCurrencyList = &tmp
 	} else {
-		filtered := make([]lib.CryptoCurrencyData, 0)
+		filtered := make(lib.CryptoCurrencyList, 0)
 		for _, cryptoCurrencyData := range *cryptoCurrencyList {
 			createdAt, err := time.Parse(time.RFC3339, cryptoCurrencyData.DateAdded)
 			if err != nil {

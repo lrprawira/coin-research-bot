@@ -35,6 +35,7 @@ func main() {
 
 	cryptoCurrencyListingResponseBody := lib.GetCoinList()
 	cryptoCurrencyList := cryptoCurrencyListingResponseBody.Data.CryptoCurrencyList
+	cryptoCurrencyList.PrintCoins()
 
 	statistics.Total = uint(len(cryptoCurrencyList))
 
@@ -62,6 +63,7 @@ func main() {
 	/* Filters */
 	cryptoCurrencyList = filtermodules.FilterByStartDate(&cryptoCurrencyList, coinChartOverviewDataPayloadArray, createdAtMode, beforeTime)
 	statistics.FilteredByDate = statistics.Total - uint(len(cryptoCurrencyList))
+	cryptoCurrencyList.PrintCoins()
 
 	cryptoCurrencyList = filtermodules.FilterByExchanges(&cryptoCurrencyList, coinMarketDataArray, []string{"binance"})
 	statistics.FilteredByExchanges = statistics.Total - statistics.FilteredByDate - uint(len(cryptoCurrencyList))

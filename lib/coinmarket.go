@@ -3,9 +3,10 @@ package lib
 import (
 	"coin_research_bot/lib/common"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"log"
 	"net/http"
-	"os"
 	"sync"
 )
 
@@ -50,10 +51,15 @@ func getCoinMarketData(cryptoCurrencyData *CryptoCurrencyData) (*CoinMarketRespo
 		return nil, err
 	}
 
+	if coinMarketData.Status.ErrorCode != "0" {
+		return nil, errors.New(coinMarketData.Status.ErrorMessage)
+	}
+	log.Println(coinMarketData.Data)
+
 	return &coinMarketData, nil
 }
 
-func GetCoinMarketDataArray(cryptoCurrencyList *[]CryptoCurrencyData) CoinMarketDataArray {
+func GetCoinMarketDataArray(cryptoCurrencyList *CryptoCurrencyList) CoinMarketDataArray {
 	var wg sync.WaitGroup
 	ch := make(chan bool, 8)
 	coinMarketDataArray := make(CoinMarketDataArray, len(*cryptoCurrencyList))
@@ -68,8 +74,7 @@ func GetCoinMarketDataArray(cryptoCurrencyList *[]CryptoCurrencyData) CoinMarket
 			defer wg.Done()
 			coinMarketData, err := getCoinMarketData(&cryptoCurrencyData)
 			if err != nil {
-				fmt.Fprintf(os.Stderr, err.Error())
-				<-ch
+				log.Fatalln(err)
 			}
 			coinMarketDataArray[i] = coinMarketData
 			<-ch
@@ -80,7 +85,7 @@ func GetCoinMarketDataArray(cryptoCurrencyList *[]CryptoCurrencyData) CoinMarket
 	return coinMarketDataArray
 }
 
-func (coinMarketDataArray CoinMarketDataArray) FilterByExchanges(cryptoCurrencyList *[]CryptoCurrencyData, exchanges []string) []CryptoCurrencyData {
+func (coinMarketDataArray CoinMarketDataArray) FilterByExchanges(cryptoCurrencyList *CryptoCurrencyList, exchanges []string) []CryptoCurrencyData {
 	filtered := make([]CryptoCurrencyData, 0, len(*cryptoCurrencyList))
 	for i, cryptoCurrencyData := range *cryptoCurrencyList {
 		for _, marketPair := range coinMarketDataArray[i].Data.MarketPairs {

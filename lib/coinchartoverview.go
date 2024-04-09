@@ -5,9 +5,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"math"
 	"net/http"
-	"os"
 	"strconv"
 	"sync"
 	"time"
@@ -49,6 +49,10 @@ func getCoinChartOverviewData(cryptoCurrencyData *CryptoCurrencyData) (*CoinChar
 		return nil, err
 	}
 
+	if coinChartOverviewData.Status.ErrorCode != "0" {
+		return nil, errors.New(coinChartOverviewData.Status.ErrorMessage)
+	}
+
 	found := false
 	minKey := int64(math.MaxInt64)
 
@@ -68,7 +72,7 @@ func getCoinChartOverviewData(cryptoCurrencyData *CryptoCurrencyData) (*CoinChar
 	return nil, errors.New("Coin chart not found")
 }
 
-func GetCoinChartOverviewDataPayloadArray(cryptoCurrencyList *[]CryptoCurrencyData) CoinChartOverviewDataPayload {
+func GetCoinChartOverviewDataPayloadArray(cryptoCurrencyList *CryptoCurrencyList) CoinChartOverviewDataPayload {
 	var wg sync.WaitGroup
 	ch := make(chan bool, 8)
 	coinChartOverviewDataPayloadArray := make(CoinChartOverviewDataPayload, len(*cryptoCurrencyList))
@@ -83,8 +87,7 @@ func GetCoinChartOverviewDataPayloadArray(cryptoCurrencyList *[]CryptoCurrencyDa
 			defer wg.Done()
 			coinChartOverviewData, err := getCoinChartOverviewData(&cryptoCurrencyData)
 			if err != nil {
-				fmt.Fprintf(os.Stderr, err.Error())
-				<-ch
+				log.Fatalln(err)
 			}
 			coinChartOverviewDataPayloadArray[i] = coinChartOverviewData
 			<-ch
@@ -94,7 +97,7 @@ func GetCoinChartOverviewDataPayloadArray(cryptoCurrencyList *[]CryptoCurrencyDa
 	return coinChartOverviewDataPayloadArray
 }
 
-func (coinChartOverviewDataPayloadArray CoinChartOverviewDataPayload) FilterByFirstChartDate(cryptoCurrencyList *[]CryptoCurrencyData, beforeTime time.Time) []CryptoCurrencyData {
+func (coinChartOverviewDataPayloadArray CoinChartOverviewDataPayload) FilterByFirstChartDate(cryptoCurrencyList *CryptoCurrencyList, beforeTime time.Time) CryptoCurrencyList {
 	filtered := make([]CryptoCurrencyData, 0, len(*cryptoCurrencyList))
 	for i, cryptoCurrencyData := range *cryptoCurrencyList {
 		startDate := time.Unix(coinChartOverviewDataPayloadArray[i].key, 0)
