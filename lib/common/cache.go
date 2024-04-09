@@ -21,12 +21,15 @@ func HandleCacheTableCreation()  {
 	}
 }
 
-func GetCacheOrRunCallable[T any](data *T, cacheKey string, cb func() T) (*T, error) {
+func GetCacheOrRunCallable[T any](data *T, cacheKey string, cacheTtl uint, cb func() T) (*T, error) {
+	// t0 := time.Now()
 	cacheEntry := CacheEntry{}
 	db := GetDB()
+	// log.Println("Cache", time.Since(t0))
 	row := db.QueryRow("SELECT id, value, timestamp FROM caches WHERE key=?;", cacheKey)
-	if err := row.Scan(&cacheEntry.Id, &cacheEntry.Value, &cacheEntry.Timestamp); err == nil && cacheEntry.Timestamp.After(time.Now().Add(time.Duration(-15)*time.Minute)) {
+	if err := row.Scan(&cacheEntry.Id, &cacheEntry.Value, &cacheEntry.Timestamp); err == nil && cacheEntry.Timestamp.After(time.Now().Add(time.Duration(-cacheTtl)*time.Second)) {
 		// Found row
+		// log.Println("Cache Hit!", reflect.TypeOf(data))
 		bufPtr := bytes.NewBuffer(cacheEntry.Value)
 		gob.NewDecoder(bufPtr).Decode(data)
 		return data, nil

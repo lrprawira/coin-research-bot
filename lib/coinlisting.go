@@ -56,9 +56,9 @@ func getCoinList() (ListingResponseBody, error) {
 	return data, nil
 }
 
-func GetCoinList() ListingResponseBody {
+func GetCoinList() *ListingResponseBody {
 	cryptoCurrencyListingResponseBody := new(ListingResponseBody)
-	cryptoCurrencyListingResponseBody, err := common.GetCacheOrRunCallable[ListingResponseBody](cryptoCurrencyListingResponseBody, "listing", func() ListingResponseBody {
+	cryptoCurrencyListingResponseBody, err := common.GetCacheOrRunCallable[ListingResponseBody](cryptoCurrencyListingResponseBody, "listing", 15 * 60, func() ListingResponseBody {
 		res, err := getCoinList()
 		if err != nil {
 			log.Fatalln(err)
@@ -68,5 +68,5 @@ func GetCoinList() ListingResponseBody {
 	if err != nil {
 		log.Fatalln(err)
 	}
-	return *cryptoCurrencyListingResponseBody
+	return cryptoCurrencyListingResponseBody
 }

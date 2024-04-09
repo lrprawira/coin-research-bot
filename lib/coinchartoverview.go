@@ -3,6 +3,7 @@ package lib
 import (
 	"coin_research_bot/lib/common"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"math"
 	"net/http"
@@ -30,25 +31,22 @@ type CoinChartOverviewDataPayloadItem struct {
 	key  int64
 }
 
-type CoinChartOverviewDataPayload []CoinChartOverviewDataPayloadItem
+type CoinChartOverviewDataPayload []*CoinChartOverviewDataPayloadItem
 
-func getCoinChartOverviewData(wg *sync.WaitGroup, cryptoCurrencyData CryptoCurrencyData, coinChartOverviewDataArray CoinChartOverviewDataPayload, iter int) {
-	defer wg.Done()
-	req, err := http.NewRequest("GET", getCoinChartOverviewEndpoint(cryptoCurrencyData), nil)
+func getCoinChartOverviewData(cryptoCurrencyData *CryptoCurrencyData) (*CoinChartOverviewDataPayloadItem, error) {
+	req, err := http.NewRequest("GET", getCoinChartOverviewEndpoint(*cryptoCurrencyData), nil)
 	req.Header = common.CommonHeader
 	res, err := http.DefaultClient.Do(req)
 
 	if err != nil {
-		fmt.Fprintf(os.Stderr, err.Error())
-		return
+		return nil, err
 	}
 
 	var coinChartOverviewData CoinChartOverviewResponseBody
 	err = json.NewDecoder(res.Body).Decode(&coinChartOverviewData)
 
 	if err != nil {
-		fmt.Fprintf(os.Stderr, err.Error())
-		return
+		return nil, err
 	}
 
 	found := false
@@ -65,21 +63,35 @@ func getCoinChartOverviewData(wg *sync.WaitGroup, cryptoCurrencyData CryptoCurre
 		}
 	}
 	if found {
-		coinChartOverviewDataArray[iter] = CoinChartOverviewDataPayloadItem{coinChartOverviewData, minKey}
+		return &CoinChartOverviewDataPayloadItem{coinChartOverviewData, minKey}, nil
 	}
-	return
+	return nil, errors.New("Coin chart not found")
 }
 
 func GetCoinChartOverviewDataPayloadArray(cryptoCurrencyList *[]CryptoCurrencyData) CoinChartOverviewDataPayload {
 	var wg sync.WaitGroup
-	coinChartOverviewData := make(CoinChartOverviewDataPayload, len(*cryptoCurrencyList))
+	ch := make(chan bool, 8)
+	coinChartOverviewDataPayloadArray := make(CoinChartOverviewDataPayload, len(*cryptoCurrencyList))
 	wg.Add(len(*cryptoCurrencyList))
 
-	for i, cryptocurrencyData := range *cryptoCurrencyList {
-		go getCoinChartOverviewData(&wg, cryptocurrencyData, coinChartOverviewData, i)
+	for i, cryptoCurrencyData := range *cryptoCurrencyList {
+		ch <- true
+		// Shadow vars to remove warnings of using these inside of the closure
+		cryptoCurrencyData := cryptoCurrencyData
+		i := i
+		go func() {
+			defer wg.Done()
+			coinChartOverviewData, err := getCoinChartOverviewData(&cryptoCurrencyData)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, err.Error())
+				<- ch
+			}
+			coinChartOverviewDataPayloadArray[i] = coinChartOverviewData
+			<- ch
+		}()
 	}
 	wg.Wait()
-	return coinChartOverviewData
+	return coinChartOverviewDataPayloadArray
 }
 
 func (coinChartOverviewDataPayloadArray CoinChartOverviewDataPayload) FilterByFirstChartDate(cryptoCurrencyList *[]CryptoCurrencyData, beforeTime time.Time) []CryptoCurrencyData  {

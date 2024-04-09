@@ -20,13 +20,12 @@ var beforeTime, _ = time.Parse(time.RFC3339, beforeTimeString)
 /* End config */
 
 func main() {
+	// now := time.Now()
 	db := common.GetDB()
 	defer db.Close()
-
-	common.HandleCacheTableCreation()
-
-	cryptoCurrencyListingResponseBody := lib.GetCoinList()
-	cryptoCurrencyList := cryptoCurrencyListingResponseBody.Data.CryptoCurrencyList
+	// defer func() {
+	// 	log.Println(time.Since(now))
+	// }()
 
 	statistics := struct {
 		Total               uint
@@ -34,13 +33,39 @@ func main() {
 		FilteredByExchanges uint
 	}{}
 
+	common.HandleCacheTableCreation()
+
+	cryptoCurrencyListingResponseBody := lib.GetCoinList()
+	cryptoCurrencyList := cryptoCurrencyListingResponseBody.Data.CryptoCurrencyList
+
 	statistics.Total = uint(len(cryptoCurrencyList))
 
+	/* query for filters */
+	var coinChartOverviewDataPayloadArray *lib.CoinChartOverviewDataPayload = nil
+	if filtermodules.CreatedAtChart == createdAtMode {
+		coinChartOverviewDataPayloadArray = new(lib.CoinChartOverviewDataPayload)
+		var err error
+		coinChartOverviewDataPayloadArray, err = common.GetCacheOrRunCallable[lib.CoinChartOverviewDataPayload](coinChartOverviewDataPayloadArray, "coinchartoverviewdatapayloadarray", 3600, func() lib.CoinChartOverviewDataPayload {
+			return lib.GetCoinChartOverviewDataPayloadArray(&cryptoCurrencyList)
+		})
+		if err != nil {
+			log.Fatalln(err)
+		}
+	}
+	coinMarketDataArray := new(lib.CoinMarketDataArray)
+	coinMarketDataArray, err := common.GetCacheOrRunCallable[lib.CoinMarketDataArray](coinMarketDataArray, "coinmarketdataarray", 86400, func() lib.CoinMarketDataArray {
+		return lib.GetCoinMarketDataArray(&cryptoCurrencyList)
+	})
+	if err != nil {
+		log.Fatalln(err)
+	}
+	/* End query for filters */
+
 	/* Filters */
-	cryptoCurrencyList = filtermodules.FilterByStartDate(&cryptoCurrencyList, nil, createdAtMode, beforeTime)
+	cryptoCurrencyList = filtermodules.FilterByStartDate(&cryptoCurrencyList, coinChartOverviewDataPayloadArray, createdAtMode, beforeTime)
 	statistics.FilteredByDate = statistics.Total - uint(len(cryptoCurrencyList))
 
-	cryptoCurrencyList = filtermodules.FilterByExchanges(&cryptoCurrencyList, nil, []string{"binance"})
+	cryptoCurrencyList = filtermodules.FilterByExchanges(&cryptoCurrencyList, coinMarketDataArray, []string{"binance"})
 	statistics.FilteredByExchanges = statistics.Total - statistics.FilteredByDate - uint(len(cryptoCurrencyList))
 	/* End Filters */
 
