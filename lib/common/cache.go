@@ -7,7 +7,7 @@ import (
 	"time"
 )
 
-func HandleCacheTableCreation()  {
+func HandleCacheTableCreation() {
 	db := GetDB()
 	if _, err := db.Exec(`
 		CREATE TABLE IF NOT EXISTS caches (
@@ -34,7 +34,7 @@ func GetCacheOrRunCallable[T any](data *T, cacheKey string, cacheTtl uint, cb fu
 		gob.NewDecoder(bufPtr).Decode(data)
 		return data, nil
 	}
-	tmp := cb() 
+	tmp := cb()
 	data = &tmp
 	var buf bytes.Buffer
 	gob.NewEncoder(&buf).Encode(tmp)

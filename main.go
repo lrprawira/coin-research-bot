@@ -1,14 +1,12 @@
 package main
 
 import (
-	"coin_research_bot/lib/filtermodules"
 	"coin_research_bot/lib"
 	"coin_research_bot/lib/common"
+	"coin_research_bot/lib/filtermodules"
 	"fmt"
 	"log"
 	"time"
-
-	_ "github.com/mattn/go-sqlite3"
 )
 
 /* Config */

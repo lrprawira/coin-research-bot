@@ -84,17 +84,17 @@ func GetCoinChartOverviewDataPayloadArray(cryptoCurrencyList *[]CryptoCurrencyDa
 			coinChartOverviewData, err := getCoinChartOverviewData(&cryptoCurrencyData)
 			if err != nil {
 				fmt.Fprintf(os.Stderr, err.Error())
-				<- ch
+				<-ch
 			}
 			coinChartOverviewDataPayloadArray[i] = coinChartOverviewData
-			<- ch
+			<-ch
 		}()
 	}
 	wg.Wait()
 	return coinChartOverviewDataPayloadArray
 }
 
-func (coinChartOverviewDataPayloadArray CoinChartOverviewDataPayload) FilterByFirstChartDate(cryptoCurrencyList *[]CryptoCurrencyData, beforeTime time.Time) []CryptoCurrencyData  {
+func (coinChartOverviewDataPayloadArray CoinChartOverviewDataPayload) FilterByFirstChartDate(cryptoCurrencyList *[]CryptoCurrencyData, beforeTime time.Time) []CryptoCurrencyData {
 	filtered := make([]CryptoCurrencyData, 0, len(*cryptoCurrencyList))
 	for i, cryptoCurrencyData := range *cryptoCurrencyList {
 		startDate := time.Unix(coinChartOverviewDataPayloadArray[i].key, 0)
