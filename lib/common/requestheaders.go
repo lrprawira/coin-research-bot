@@ -10,7 +10,7 @@ import (
 const host = "api.coinmarketcap.com"
 const origin = "https://coinmarketcap.com"
 const referer = "https://coinmarketcap.com/"
-const userAgent = "Mozilla/5.0 (X11; Linux x86_64; rv:124.0) Gecko/20100101 Firefox/124.0"
+const userAgent = "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Mobile Safari/537.3"
 
 var requestId = strings.Replace(uuid.NewString(), "-", "", -1)
 
