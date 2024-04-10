@@ -14,12 +14,15 @@ import (
 func HandleCacheTableCreation()  {
 	db := GetDB()
 	if _, err := db.Exec(`
+		BEGIN;
 		CREATE TABLE IF NOT EXISTS caches (
 			id INTEGER NOT NULL PRIMARY KEY,
 			key TEXT NOT NULL UNIQUE,
 			value BLOB,
 			timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
 		);
+		CREATE INDEX IF NOT EXISTS timestamp_idx ON caches (timestamp);
+		COMMIT;
 		`); err != nil {
 		log.Fatalln(err)
 	}
