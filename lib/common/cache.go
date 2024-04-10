@@ -55,10 +55,12 @@ func GetCaches(cacheKeys []string, columns []string) *sql.Rows {
 }
 
 func GetCacheOrRunCallable[T any](data *T, cacheKey string, cacheTtl uint, cb func() T) (*T, error) {
-	// t0 := time.Now()
+	// Register dynamic maps and interfaces
+	gob.Register(map[string]interface {}{})
+	gob.Register([] interface {}{})
+
 	cacheEntry := CacheEntry{}
 	db := GetDB()
-	// log.Println("Cache", time.Since(t0))
 	row := db.QueryRow("SELECT id, key, value, timestamp FROM caches WHERE key=?;", cacheKey)
 	if err := row.Scan(&cacheEntry.Id, &cacheEntry.Key, &cacheEntry.Value, &cacheEntry.Timestamp); err == nil && cacheEntry.Timestamp.After(time.Now().Add(time.Duration(-cacheTtl)*time.Second)) {
 		// Found row
@@ -75,18 +77,10 @@ func GetCacheOrRunCallable[T any](data *T, cacheKey string, cacheTtl uint, cb fu
 	tmp := cb()
 	data = &tmp
 	var buf bytes.Buffer
-	gob.NewEncoder(&buf).Encode(tmp)
-
-	// bufptr := bytes.NewBuffer(buf.Bytes())
-	// tmp2 := new(T)
-	// err2 := gob.NewDecoder(bufptr).Decode(tmp2)
-	// fmt.Println("tmp start printing")
-	// fmt.Println(tmp2)
-	// fmt.Println("tmp done printing")
-	// fmt.Println(reflect.TypeOf(tmp2))
-	// if err2 != nil {
-	// 	log.Panicln("error here", err2)
-	// }
+	err := gob.NewEncoder(&buf).Encode(tmp)
+	if err != nil {
+		log.Fatalln("Cache encode error!", err)
+	}
 
 	if cacheEntry.Id != 0 {
 		// Row already exists
@@ -97,7 +91,7 @@ func GetCacheOrRunCallable[T any](data *T, cacheKey string, cacheTtl uint, cb fu
 		return data, nil
 	}
 	// Row has not been created
-	_, err := db.Exec("INSERT INTO caches (key, value) VALUES (?, ?)", cacheKey, buf.Bytes())
+	_, err = db.Exec("INSERT INTO caches (key, value) VALUES (?, ?)", cacheKey, buf.Bytes())
 	if err != nil {
 		return data, err
 	}
