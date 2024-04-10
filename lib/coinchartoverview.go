@@ -30,8 +30,8 @@ func getCoinChartOverviewEndpoint(cryptoCurrencyData CryptoCurrencyData) string 
 }
 
 type CoinChartOverviewDataPayloadItem struct {
-	data CoinChartOverviewResponseBody
-	key  int64
+	Data CoinChartOverviewResponseBody
+	Key  int64
 }
 
 type CoinChartOverviewDataPayload []*CoinChartOverviewDataPayloadItem
@@ -103,7 +103,6 @@ func GetCoinChartOverviewDataPayloadArray(cryptoCurrencyList *CryptoCurrencyList
 	for i, cryptoCurrencyData := range *cryptoCurrencyList {
 		ch <- true
 		if cached, ok := cacheMap[fmt.Sprintf("coinchartoverviewdata:%d", cryptoCurrencyData.Id)]; ok {
-			fmt.Println("cached", ok, cached)
 			wg.Done()
 			<- ch
 			coinChartOverviewDataPayloadArray[i] = cached
@@ -136,7 +135,7 @@ func GetCoinChartOverviewDataPayloadArray(cryptoCurrencyList *CryptoCurrencyList
 func (coinChartOverviewDataPayloadArray CoinChartOverviewDataPayload) FilterByFirstChartDate(cryptoCurrencyList *CryptoCurrencyList, beforeTime time.Time) CryptoCurrencyList {
 	filtered := make([]CryptoCurrencyData, 0, len(*cryptoCurrencyList))
 	for i, cryptoCurrencyData := range *cryptoCurrencyList {
-		startDate := time.Unix(coinChartOverviewDataPayloadArray[i].key, 0)
+		startDate := time.Unix(coinChartOverviewDataPayloadArray[i].Key, 0)
 		if startDate.Before(beforeTime) {
 			continue
 		}
