@@ -1,13 +1,16 @@
 package lib
 
 import (
+	"bytes"
 	"coin_research_bot/lib/common"
+	"encoding/gob"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
 	"math"
 	"net/http"
+	"os"
 	"strconv"
 	"sync"
 	"time"
@@ -76,10 +79,36 @@ func GetCoinChartOverviewDataPayloadArray(cryptoCurrencyList *CryptoCurrencyList
 	var wg sync.WaitGroup
 	ch := make(chan bool, 16)
 	coinChartOverviewDataPayloadArray := make(CoinChartOverviewDataPayload, len(*cryptoCurrencyList))
+	cacheKeys := make([]string, len(*cryptoCurrencyList))
+	for i, cryptoCurrencyData := range *cryptoCurrencyList {
+		cacheKeys[i] = fmt.Sprintf("coinchartoverviewdata:%d", cryptoCurrencyData.Id)
+	}
 	wg.Add(len(*cryptoCurrencyList))
+	foundInCache := common.GetCaches(cacheKeys, []string{"key", "value", "timestamp"})
+	cacheMap := map[string]*CoinChartOverviewDataPayloadItem{}
+	for foundInCache.Next() {
+		cacheEntry := common.CacheEntry{}
+		if err := foundInCache.Scan(&cacheEntry.Key, &cacheEntry.Value, &cacheEntry.Timestamp); err != nil || !cacheEntry.Timestamp.After(time.Now().Add(time.Duration(-86400)*time.Second))  {
+			fmt.Fprintf(os.Stderr, "Cache is expired or broken")
+			continue
+		}
+		cacheMap[cacheEntry.Key] = new(CoinChartOverviewDataPayloadItem)
+		bufPtr := bytes.NewBuffer(cacheEntry.Value)
+		err := gob.NewDecoder(bufPtr).Decode(cacheMap[cacheEntry.Key])
+		if err != nil {
+			log.Fatalln(err)
+		}
+	}
 
 	for i, cryptoCurrencyData := range *cryptoCurrencyList {
 		ch <- true
+		if cached, ok := cacheMap[fmt.Sprintf("coinchartoverviewdata:%d", cryptoCurrencyData.Id)]; ok {
+			fmt.Println("cached", ok, cached)
+			wg.Done()
+			<- ch
+			coinChartOverviewDataPayloadArray[i] = cached
+			continue
+		}
 		// Shadow vars to remove warnings of using these inside of the closure
 		cryptoCurrencyData := cryptoCurrencyData
 		i := i

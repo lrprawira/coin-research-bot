@@ -1,13 +1,17 @@
 package lib
 
 import (
+	"bytes"
 	"coin_research_bot/lib/common"
+	"encoding/gob"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"sync"
+	"time"
 )
 
 const baseCoinMarketEndpoint = "https://api.coinmarketcap.com/data-api/v3/cryptocurrency/market-pairs/latest"
@@ -62,10 +66,35 @@ func GetCoinMarketDataArray(cryptoCurrencyList *CryptoCurrencyList) *CoinMarketD
 	var wg sync.WaitGroup
 	ch := make(chan bool, 16)
 	coinMarketDataArray := make(CoinMarketDataArray, len(*cryptoCurrencyList))
+	cacheKeys := make([]string, len(*cryptoCurrencyList))
+	for i, cryptoCurrencyData := range *cryptoCurrencyList {
+		cacheKeys[i] = fmt.Sprintf("coinmarketdata:%d", cryptoCurrencyData.Id)
+	}
 	wg.Add(len(*cryptoCurrencyList))
+	foundInCache := common.GetCaches(cacheKeys, []string{"key", "value", "timestamp"})
+	cacheMap := map[string]*CoinMarketResponseBody{}
+	for foundInCache.Next() {
+		cacheEntry := common.CacheEntry{}
+		if err := foundInCache.Scan(&cacheEntry.Key, &cacheEntry.Value, &cacheEntry.Timestamp); err != nil || !cacheEntry.Timestamp.After(time.Now().Add(time.Duration(-86400)*time.Second))  {
+			fmt.Fprintf(os.Stderr, "Cache is expired or broken")
+			continue
+		}
+		cacheMap[cacheEntry.Key] = new(CoinMarketResponseBody)
+		bufPtr := bytes.NewBuffer(cacheEntry.Value)
+		err := gob.NewDecoder(bufPtr).Decode(cacheMap[cacheEntry.Key])
+		if err != nil {
+			log.Fatalln(err)
+		}
+	}
 
 	for i, cryptoCurrencyData := range *cryptoCurrencyList {
 		ch <- true
+		if cached, ok := cacheMap[fmt.Sprintf("coinmarketdata:%d", cryptoCurrencyData.Id)]; ok {
+			wg.Done()
+			<- ch
+			coinMarketDataArray[i] = cached
+			continue
+		}
 		// Shadow vars to remove warnings of using these inside of the closure
 		cryptoCurrencyData := cryptoCurrencyData
 		i := i
