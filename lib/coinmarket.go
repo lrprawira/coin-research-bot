@@ -58,9 +58,9 @@ func getCoinMarketData(cryptoCurrencyData *CryptoCurrencyData) (*CoinMarketRespo
 	return &coinMarketData, nil
 }
 
-func GetCoinMarketDataArray(cryptoCurrencyList *CryptoCurrencyList) CoinMarketDataArray {
+func GetCoinMarketDataArray(cryptoCurrencyList *CryptoCurrencyList) *CoinMarketDataArray {
 	var wg sync.WaitGroup
-	ch := make(chan bool, 8)
+	ch := make(chan bool, 16)
 	coinMarketDataArray := make(CoinMarketDataArray, len(*cryptoCurrencyList))
 	wg.Add(len(*cryptoCurrencyList))
 
@@ -71,17 +71,24 @@ func GetCoinMarketDataArray(cryptoCurrencyList *CryptoCurrencyList) CoinMarketDa
 		i := i
 		go func() {
 			defer wg.Done()
-			coinMarketData, err := getCoinMarketData(&cryptoCurrencyData)
+			coinMarketData := new(CoinMarketResponseBody)
+			coinMarketData, err := common.GetCacheOrRunCallable[CoinMarketResponseBody](coinMarketData, fmt.Sprintf("coinmarketdata:%d", cryptoCurrencyData.Id), 86400, func() CoinMarketResponseBody {
+				coinMarketData, err := getCoinMarketData(&cryptoCurrencyData)
+				if err != nil {
+					log.Fatalln(err)
+				}
+				return *coinMarketData
+			})
+			<-ch
 			if err != nil {
 				log.Fatalln(err)
 			}
 			coinMarketDataArray[i] = coinMarketData
-			<-ch
 		}()
 	}
 
 	wg.Wait()
-	return coinMarketDataArray
+	return &coinMarketDataArray
 }
 
 func (coinMarketDataArray CoinMarketDataArray) FilterByExchanges(cryptoCurrencyList *CryptoCurrencyList, exchanges []string) []CryptoCurrencyData {

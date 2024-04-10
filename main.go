@@ -14,7 +14,6 @@ const createdAtMode = filtermodules.CreatedAtDateAdded
 const beforeTimeString = "2022-01-01T00:00:00Z"
 
 var beforeTime, _ = time.Parse(time.RFC3339, beforeTimeString)
-
 /* End config */
 
 func main() {
@@ -41,26 +40,13 @@ func main() {
 	/* Filters */
 	var coinChartOverviewDataPayloadArray *lib.CoinChartOverviewDataPayload = nil
 	if filtermodules.CreatedAtChart == createdAtMode {
-		coinChartOverviewDataPayloadArray = new(lib.CoinChartOverviewDataPayload)
-		var err error
-		coinChartOverviewDataPayloadArray, err = common.GetCacheOrRunCallable[lib.CoinChartOverviewDataPayload](coinChartOverviewDataPayloadArray, "coinchartoverviewdatapayloadarray", 3600, func() lib.CoinChartOverviewDataPayload {
-			return lib.GetCoinChartOverviewDataPayloadArray(&cryptoCurrencyList)
-		})
-		if err != nil {
-			log.Fatalln(err)
-		}
+		coinChartOverviewDataPayloadArray = lib.GetCoinChartOverviewDataPayloadArray(&cryptoCurrencyList)
 	}
 
 	cryptoCurrencyList = filtermodules.FilterByStartDate(&cryptoCurrencyList, coinChartOverviewDataPayloadArray, createdAtMode, beforeTime)
 	statistics.FilteredByDate = statistics.Total - uint(len(cryptoCurrencyList))
 
-	coinMarketDataArray := new(lib.CoinMarketDataArray)
-	coinMarketDataArray, err := common.GetCacheOrRunCallable[lib.CoinMarketDataArray](coinMarketDataArray, "coinmarketdataarray", 86400, func() lib.CoinMarketDataArray {
-		return lib.GetCoinMarketDataArray(&cryptoCurrencyList)
-	})
-	if err != nil {
-		log.Fatalln(err)
-	}
+	coinMarketDataArray := lib.GetCoinMarketDataArray(&cryptoCurrencyList)
 
 	cryptoCurrencyList = filtermodules.FilterByExchanges(&cryptoCurrencyList, coinMarketDataArray, []string{"binance"})
 	statistics.FilteredByExchanges = statistics.Total - statistics.FilteredByDate - uint(len(cryptoCurrencyList))
@@ -79,7 +65,7 @@ func main() {
 			if quote.Name != "USDT" {
 				continue
 			}
-			fmt.Printf("FDMarketCap: %f, 1Y: %.3f %%\n", quote.FullyDilutedMarketCap, quote.PercentChangeOneYear)
+			fmt.Printf("MarketCap: %f, FDMarketCap: %f, 1Y: %.3f %%\n", quote.MarketCap, quote.FullyDilutedMarketCap, quote.PercentChangeOneYear)
 		}
 	}
 	/* End Print Coin List */

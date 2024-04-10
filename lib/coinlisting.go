@@ -8,7 +8,9 @@ import (
 	"net/http"
 )
 
-const listingEndpoint = "https://api.coinmarketcap.com/data-api/v3/cryptocurrency/listing?start=1&limit=1000&sortBy=date_added&sortType=asc&convert=USDT&cryptoType=all&tagType=all&audited=false&aux=ath,atl,high24h,low24h,num_market_pairs,cmc_rank,date_added,max_supply,circulating_supply,total_supply,volume_7d,volume_30d,self_reported_circulating_supply,self_reported_market_cap&category=spot&marketCapRange=100000000~200000000"
+const listingLimit = 10000
+var marketCapRange = struct {min uint; max uint}{100_000_000, 200_000_000}
+var listingEndpoint = fmt.Sprintf("https://api.coinmarketcap.com/data-api/v3/cryptocurrency/listing?start=1&limit=%d&sortBy=date_added&sortType=asc&convert=USDT&cryptoType=all&tagType=all&audited=false&aux=ath,atl,high24h,low24h,num_market_pairs,cmc_rank,date_added,max_supply,circulating_supply,total_supply,volume_7d,volume_30d,self_reported_circulating_supply,self_reported_market_cap&category=spot&marketCapRange=%d~%d", listingLimit, marketCapRange.min, marketCapRange.max)
 
 type CryptoCurrencyData struct {
 	Id        uint    `json:"id"`
@@ -61,7 +63,7 @@ func getCoinList() (ListingResponseBody, error) {
 
 func GetCoinList() *ListingResponseBody {
 	cryptoCurrencyListingResponseBody := new(ListingResponseBody)
-	cryptoCurrencyListingResponseBody, err := common.GetCacheOrRunCallable[ListingResponseBody](cryptoCurrencyListingResponseBody, "listing", 15*60, func() ListingResponseBody {
+	cryptoCurrencyListingResponseBody, err := common.GetCacheOrRunCallable[ListingResponseBody](cryptoCurrencyListingResponseBody, "listing", 86400, func() ListingResponseBody {
 		res, err := getCoinList()
 		if err != nil {
 			log.Fatalln(err)

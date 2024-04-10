@@ -72,9 +72,9 @@ func getCoinChartOverviewData(cryptoCurrencyData *CryptoCurrencyData) (*CoinChar
 	return nil, errors.New("Coin chart not found")
 }
 
-func GetCoinChartOverviewDataPayloadArray(cryptoCurrencyList *CryptoCurrencyList) CoinChartOverviewDataPayload {
+func GetCoinChartOverviewDataPayloadArray(cryptoCurrencyList *CryptoCurrencyList) *CoinChartOverviewDataPayload {
 	var wg sync.WaitGroup
-	ch := make(chan bool, 8)
+	ch := make(chan bool, 16)
 	coinChartOverviewDataPayloadArray := make(CoinChartOverviewDataPayload, len(*cryptoCurrencyList))
 	wg.Add(len(*cryptoCurrencyList))
 
@@ -85,16 +85,23 @@ func GetCoinChartOverviewDataPayloadArray(cryptoCurrencyList *CryptoCurrencyList
 		i := i
 		go func() {
 			defer wg.Done()
-			coinChartOverviewData, err := getCoinChartOverviewData(&cryptoCurrencyData)
+			coinChartOverviewData := new(CoinChartOverviewDataPayloadItem)
+			coinChartOverviewData, err := common.GetCacheOrRunCallable[CoinChartOverviewDataPayloadItem](coinChartOverviewData, fmt.Sprintf("coinchartoverviewdata:%d", cryptoCurrencyData.Id), 86400, func() CoinChartOverviewDataPayloadItem {
+				coinChartOverviewData, err := getCoinChartOverviewData(&cryptoCurrencyData)
+				if err != nil {
+					log.Fatalln(err)
+				}
+				return *coinChartOverviewData
+			})
+			<-ch
 			if err != nil {
 				log.Fatalln(err)
 			}
 			coinChartOverviewDataPayloadArray[i] = coinChartOverviewData
-			<-ch
 		}()
 	}
 	wg.Wait()
-	return coinChartOverviewDataPayloadArray
+	return &coinChartOverviewDataPayloadArray
 }
 
 func (coinChartOverviewDataPayloadArray CoinChartOverviewDataPayload) FilterByFirstChartDate(cryptoCurrencyList *CryptoCurrencyList, beforeTime time.Time) CryptoCurrencyList {

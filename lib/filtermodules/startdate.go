@@ -16,8 +16,7 @@ const (
 func FilterByStartDate(cryptoCurrencyList *lib.CryptoCurrencyList, coinChartOverviewDataPayload *lib.CoinChartOverviewDataPayload, createdAtMode StartDateType, beforeTime time.Time) lib.CryptoCurrencyList {
 	if CreatedAtChart == createdAtMode {
 		if coinChartOverviewDataPayload == nil {
-			tmp := lib.GetCoinChartOverviewDataPayloadArray(cryptoCurrencyList)
-			coinChartOverviewDataPayload = &tmp
+			coinChartOverviewDataPayload = lib.GetCoinChartOverviewDataPayloadArray(cryptoCurrencyList)
 		}
 		tmp := coinChartOverviewDataPayload.FilterByFirstChartDate(cryptoCurrencyList, beforeTime)
 		cryptoCurrencyList = &tmp
