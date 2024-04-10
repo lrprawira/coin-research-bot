@@ -83,7 +83,6 @@ func GetCoinChartOverviewDataPayloadArray(cryptoCurrencyList *CryptoCurrencyList
 	for i, cryptoCurrencyData := range *cryptoCurrencyList {
 		cacheKeys[i] = fmt.Sprintf("coinchartoverviewdata:%d", cryptoCurrencyData.Id)
 	}
-	wg.Add(len(*cryptoCurrencyList))
 	foundInCache := common.GetCaches(cacheKeys, []string{"key", "value", "timestamp"})
 	cacheMap := map[string]*CoinChartOverviewDataPayloadItem{}
 	for foundInCache.Next() {
@@ -99,15 +98,14 @@ func GetCoinChartOverviewDataPayloadArray(cryptoCurrencyList *CryptoCurrencyList
 			log.Fatalln(err)
 		}
 	}
+	wg.Add(len(*cryptoCurrencyList) - len(cacheMap))
 
 	for i, cryptoCurrencyData := range *cryptoCurrencyList {
-		ch <- true
 		if cached, ok := cacheMap[fmt.Sprintf("coinchartoverviewdata:%d", cryptoCurrencyData.Id)]; ok {
-			wg.Done()
-			<- ch
 			coinChartOverviewDataPayloadArray[i] = cached
 			continue
 		}
+		ch <- true
 		// Shadow vars to remove warnings of using these inside of the closure
 		cryptoCurrencyData := cryptoCurrencyData
 		i := i

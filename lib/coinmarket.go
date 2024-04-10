@@ -70,7 +70,6 @@ func GetCoinMarketDataArray(cryptoCurrencyList *CryptoCurrencyList) *CoinMarketD
 	for i, cryptoCurrencyData := range *cryptoCurrencyList {
 		cacheKeys[i] = fmt.Sprintf("coinmarketdata:%d", cryptoCurrencyData.Id)
 	}
-	wg.Add(len(*cryptoCurrencyList))
 	foundInCache := common.GetCaches(cacheKeys, []string{"key", "value", "timestamp"})
 	cacheMap := map[string]*CoinMarketResponseBody{}
 	for foundInCache.Next() {
@@ -86,15 +85,14 @@ func GetCoinMarketDataArray(cryptoCurrencyList *CryptoCurrencyList) *CoinMarketD
 			log.Fatalln(err)
 		}
 	}
+	wg.Add(len(*cryptoCurrencyList) - len(cacheMap))
 
 	for i, cryptoCurrencyData := range *cryptoCurrencyList {
-		ch <- true
 		if cached, ok := cacheMap[fmt.Sprintf("coinmarketdata:%d", cryptoCurrencyData.Id)]; ok {
-			wg.Done()
-			<- ch
 			coinMarketDataArray[i] = cached
 			continue
 		}
+		ch <- true
 		// Shadow vars to remove warnings of using these inside of the closure
 		cryptoCurrencyData := cryptoCurrencyData
 		i := i
